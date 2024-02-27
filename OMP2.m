@@ -1,0 +1,21 @@
+function [ h,t_taps,v_taps,H ] = OMP2( A1,A2,y,taps,Gt,Gv )
+[LEN,G] = size(kron(A1,A2(:,1)));%每轮字典A均为LEN*G矩阵
+h = zeros(taps,1);%用来存储恢复的h(列向量)
+t_taps = zeros(1,taps);%用来存储恢复的时延下标(列向量)
+v_taps = zeros(1,taps);%用来存储恢复的多普勒下标(列向量)
+At = zeros(LEN,taps);%用来迭代过程中存储A被选择的列
+Pos_h = zeros(1,taps);%用来迭代过程中存储A被选择的列序号
+r_n = y;%初始化残差为y
+for i=1:taps
+    A=kron(A1,A2(:,i));
+    product = A'*r_n;%传感矩阵A各列与残差的内积
+    [val,pos] = max(abs(product));%找到最大内积绝对值，即与残差最相关的列
+    At(:,i) = A(:,pos);%存储这一列
+    Pos_h(i) = pos;%存储这一列的序号
+    t_taps(i)=floor((pos-1)/Gv)+1;
+    v_taps(i)=pos-(t_taps(i)-1)*Gv;
+    theta_ls = pinv(At(:,1:i))*y;%最小二乘解
+    r_n = y - At(:,1:i)*theta_ls;%更新残差
+    h(1:i)=theta_ls;%恢复出的theta
+end
+H=At*h;
